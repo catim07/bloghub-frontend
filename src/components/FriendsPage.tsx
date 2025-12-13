@@ -30,28 +30,37 @@ export function FriendsPage({ onBack }: { onBack: () => void }) {
   const [popupOpen, setPopupOpen] = useState(false);
 
 useEffect(() => {
-  // Ưu tiên sessionStorage → Edge KHÔNG block, fallback về localStorage
+  setLoading(true);
+
+  // 1. Lấy currentUser từ storage (ưu tiên session)
   const stored = sessionStorage.getItem("currentUser") || localStorage.getItem("currentUser");
-  const user = stored ? JSON.parse(stored) : null;
-  setCurrentUser(user);
-}, []);
+  const storedUser = stored ? JSON.parse(stored) : null;
+  setCurrentUser(storedUser);
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token || !currentUser?._id) return;
+  // 2. Nếu không có token hoặc không có user → tắt loading ngay
+  const token = localStorage.getItem("token");
+  if (!token || !storedUser?._id) {
+    setLoading(false);
+    return;
+  }
 
-    fetch(`${API_URL}/api/users`, {
-      headers: { Authorization: `Bearer ${token}` },
+  // 3. Có đủ điều kiện → fetch danh sách users
+  fetch(`${API_URL}/api/users`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (Array.isArray(data)) {
+        setUsers(data.filter((u: User) => u._id !== storedUser._id));
+      }
     })
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setUsers(data.filter((u: User) => u._id !== currentUser._id));
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [currentUser?._id]);
+    .catch(err => {
+      console.error("Lỗi fetch users:", err);
+    })
+    .finally(() => {
+      setLoading(false); // Luôn tắt loading dù thành công hay thất bại
+    });
+}, []); // Chỉ chạy 1 lần khi mount
 
   const handleFollow = async (userId: string) => {
     try {

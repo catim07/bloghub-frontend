@@ -87,7 +87,14 @@ useEffect(() => {
       .finally(() => setLoading(false));
   }
 }, []);
-
+// Fix nút theo dõi hiển thị đúng ngay khi vừa vào trang (không cần bấm gì)
+useEffect(() => {
+  if (currentUser && users.length > 0) {
+    // Force React re-calculate isFollowing() với currentUser mới nhất
+    // Shallow copy users để trigger re-render
+    setUsers([...users]);
+  }
+}, [currentUser]);
  const handleFollow = async (userId: string) => {
   try {
     const token = localStorage.getItem("token")!;

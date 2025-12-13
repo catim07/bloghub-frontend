@@ -32,35 +32,61 @@ export function FriendsPage({ onBack }: { onBack: () => void }) {
 useEffect(() => {
   setLoading(true);
 
-  // 1. Lấy currentUser từ storage (ưu tiên session)
-  const stored = sessionStorage.getItem("currentUser") || localStorage.getItem("currentUser");
-  const storedUser = stored ? JSON.parse(stored) : null;
-  setCurrentUser(storedUser);
-
-  // 2. Nếu không có token hoặc không có user → tắt loading ngay
   const token = localStorage.getItem("token");
-  if (!token || !storedUser?._id) {
+
+  // Nếu không có token → hiện thông báo cần đăng nhập
+  if (!token) {
     setLoading(false);
     return;
   }
 
-  // 3. Có đủ điều kiện → fetch danh sách users
-  fetch(`${API_URL}/api/users`, {
+  // Ưu tiên lấy từ storage trước (nếu có thì nhanh hơn)
+  const stored = sessionStorage.getItem("currentUser") || localStorage.getItem("currentUser");
+  let storedUser = stored ? JSON.parse(stored) : null;
+
+  if (storedUser?._id) {
+    // Có trong storage → dùng luôn
+    setCurrentUser(storedUser);
+    fetchUsers(storedUser._id, token);
+    return;
+  }
+
+  // Không có trong storage → fetch từ API /me (như các trang khác)
+  fetch(`${API_URL}/api/users/me`, {
     headers: { Authorization: `Bearer ${token}` },
   })
-    .then(r => r.json())
-    .then(data => {
-      if (Array.isArray(data)) {
-        setUsers(data.filter((u: User) => u._id !== storedUser._id));
-      }
+    .then(r => {
+      if (!r.ok) throw new Error();
+      return r.json();
+    })
+    .then(userData => {
+      setCurrentUser(userData);
+      // Lưu vào storage để lần sau nhanh hơn
+      localStorage.setItem("currentUser", JSON.stringify(userData));
+      sessionStorage.setItem("currentUser", JSON.stringify(userData));
+
+      fetchUsers(userData._id, token);
     })
     .catch(err => {
-      console.error("Lỗi fetch users:", err);
-    })
-    .finally(() => {
-      setLoading(false); // Luôn tắt loading dù thành công hay thất bại
+      console.error("Lỗi lấy current user:", err);
+      setLoading(false);
     });
-}, []); // Chỉ chạy 1 lần khi mount
+
+  // Hàm fetch danh sách users riêng để gọi lại
+  function fetchUsers(userId: string, authToken: string) {
+    fetch(`${API_URL}/api/users`, {
+      headers: { Authorization: `Bearer ${authToken}` },
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setUsers(data.filter((u: User) => u._id !== userId));
+        }
+      })
+      .catch(err => console.error("Lỗi fetch users:", err))
+      .finally(() => setLoading(false));
+  }
+}, []);
 
   const handleFollow = async (userId: string) => {
     try {
@@ -115,17 +141,6 @@ useEffect(() => {
     })
     .sort((a, b) => (b.followerCount || 0) - (a.followerCount || 0));
 
-  if (!currentUser) {
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center flex-col gap-6">
-      <Users className="w-24 h-24 text-gray-300" />
-      <p className="text-2xl font-medium">Bạn cần đăng nhập để tìm kiếm bạn bè</p>
-      <Button onClick={onBack} size="lg" variant="outline">
-        Quay lại trang chủ
-      </Button>
-    </div>
-  );
-}
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

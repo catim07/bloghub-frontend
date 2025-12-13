@@ -89,10 +89,16 @@ useEffect(() => {
 }, []);
 // Fix nút theo dõi hiển thị đúng ngay khi vừa vào trang (không cần bấm gì)
 useEffect(() => {
-  if (currentUser && users.length > 0) {
-    // Force React re-calculate isFollowing() với currentUser mới nhất
-    // Shallow copy users để trigger re-render
-    setUsers([...users]);
+  if (currentUser?._id && users.length > 0) {
+    // Thêm key dummy để force React re-render toàn bộ list
+    setUsers(prev => prev.map(u => ({ ...u, _forceKey: Date.now() })));
+    // Sau đó xóa key dummy đi để không ảnh hưởng data
+    setTimeout(() => {
+      setUsers(prev => prev.map(u => {
+        const { _forceKey, ...clean } = u as any;
+        return clean;
+      }));
+    }, 0);
   }
 }, [currentUser]);
  const handleFollow = async (userId: string) => {

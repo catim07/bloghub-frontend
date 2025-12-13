@@ -1,6 +1,6 @@
 // src/components/FriendsPage.tsx – ĐÃ CHUYỂN SANG .env, KHÔNG CÒN LOCALHOST NỮA!!!
 import { useEffect, useState } from "react";
-import { ArrowLeft, Search, Users } from "lucide-react";
+import { ArrowLeft, Search, UserCheck, UserPlus, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { UserProfilePopup } from "./UserProfilePopup";
@@ -88,42 +88,48 @@ useEffect(() => {
   }
 }, []);
 
-  const handleFollow = async (userId: string) => {
-    try {
-      const token = localStorage.getItem("token")!;
-      const res = await fetch(`${API_URL}/api/follow/${userId}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+ const handleFollow = async (userId: string) => {
+  try {
+    const token = localStorage.getItem("token")!;
+    const res = await fetch(`${API_URL}/api/follow/${userId}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-      if (!res.ok) throw new Error();
+    if (!res.ok) throw new Error("Lỗi server");
 
-      const { following, user } = await res.json();
+    const { following, user } = await res.json();
 
-      setCurrentUser(user);
-      localStorage.setItem("currentUser", JSON.stringify(user));
-      sessionStorage.setItem("currentUser", JSON.stringify(user));
+    // Cập nhật currentUser mới nhất từ server
+    setCurrentUser(user);
+    localStorage.setItem("currentUser", JSON.stringify(user));
+    sessionStorage.setItem("currentUser", JSON.stringify(user));
 
-      setUsers(prev =>
-        prev.map(u =>
-          u._id === userId
-            ? { ...u, followerCount: (u.followerCount || 0) + (following ? 1 : -1) }
-            : u
-        )
-      );
+    // Cập nhật followerCount trong list users
+    setUsers(prev =>
+      prev.map(u =>
+        u._id === userId
+          ? { ...u, followerCount: (u.followerCount || 0) + (following ? 1 : -1) }
+          : u
+      )
+    );
 
-      if (popupUser?._id === userId) {
-        setPopupUser(prev => prev ? {
-          ...prev,
-          followerCount: (prev.followerCount || 0) + (following ? 1 : -1)
-        } : null);
-      }
-
-      window.dispatchEvent(new Event("followChanged"));
-    } catch {
-      alert("Lỗi mạng!");
+    // Cập nhật popup nếu đang mở
+    if (popupUser?._id === userId) {
+      setPopupUser(prev => prev ? { ...prev, followerCount: (prev.followerCount || 0) + (following ? 1 : -1) } : null);
     }
-  };
+
+    // QUAN TRỌNG: Dispatch event đúng chuẩn để Sidebar và các nơi khác update
+    window.dispatchEvent(
+      new CustomEvent("followChanged", {
+        detail: { userId, following }
+      })
+    );
+
+  } catch (err) {
+    alert("Lỗi mạng hoặc không thể theo dõi!");
+  }
+};
 
   const isFollowing = (userId: string): boolean =>
     currentUser?.following?.includes(userId) || false;
@@ -230,21 +236,26 @@ useEffect(() => {
                         </div>
                       </div>
 
-                      <div className="mt-6">
-                        <button
-                          onClick={() => handleFollow(user._id)}
-                          className={`w-full py-3 rounded-lg font-medium transition-all duration-200 group
-                            ${following
-                              ? "bg-gray-200 dark:bg-gray-700 hover:bg-red-50 hover:text-red-600"
-                              : "bg-blue-600 text-white hover:bg-blue-700"
-                            }`}
-                        >
-                          <span className={following ? "group-hover:hidden" : ""}>
-                            {following ? "Đang theo dõi" : "Theo dõi"}
-                          </span>
-                          {following && <span className="hidden group-hover:inline">Bỏ theo dõi</span>}
-                        </button>
-                      </div>
+                     <div className="mt-6">
+  <Button
+    variant={isFollowing(user._id) ? "outline" : "default"}
+    size="lg"
+    onClick={() => handleFollow(user._id)}
+    className="w-full gap-2 font-semibold"
+  >
+    {isFollowing(user._id) ? (
+      <>
+        <UserCheck className="h-5 w-5" />
+        Đang theo dõi
+      </>
+    ) : (
+      <>
+        <UserPlus className="h-5 w-5" />
+        Theo dõi
+      </>
+    )}
+  </Button>
+</div>
                     </div>
                   );
                 })
@@ -282,12 +293,24 @@ useEffect(() => {
                           <p className="text-xs text-gray-500">{user.followerCount || 0} người theo dõi</p>
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleFollow(user._id)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-                      >
-                        Theo dõi
-                      </button>
+                      <Button
+  variant={isFollowing(user._id) ? "outline" : "default"}
+  size="sm"
+  onClick={() => handleFollow(user._id)}
+  className="gap-2 font-medium"
+>
+  {isFollowing(user._id) ? (
+    <>
+      <UserCheck className="h-4 w-4" />
+      Đang theo dõi
+    </>
+  ) : (
+    <>
+      <UserPlus className="h-4 w-4" />
+      Theo dõi
+    </>
+  )}
+</Button>
                     </div>
                   ))}
               </div>

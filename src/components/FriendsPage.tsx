@@ -16,6 +16,7 @@ interface User {
   followerCount?: number;
   following?: string[];
   followers?: string[];
+  
 }
 
 export function FriendsPage({ onBack }: { onBack: () => void }) {
@@ -45,11 +46,9 @@ useEffect(() => {
   let storedUser = stored ? JSON.parse(stored) : null;
 
   if (storedUser?._id) {
-    // Có trong storage → dùng luôn
-    setCurrentUser(storedUser);
-    fetchUsers(storedUser._id, token);
-    return;
-  }
+  setCurrentUser(storedUser);
+  // Không gọi fetchUsers ở đây nữa, để fetch /me update following mới nhất trước
+}
 
   // Không có trong storage → fetch từ API /me (như các trang khác)
   fetch(`${API_URL}/api/users/me`, {
@@ -144,8 +143,12 @@ useEffect(() => {
   }
 };
 
-  const isFollowing = (userId: string): boolean =>
-    currentUser?.following?.includes(userId) || false;
+    const isFollowing = (userId: string): boolean => {
+    if (!currentUser?.following) return false;
+    return currentUser.following.some((f: any) => 
+      (f._id || f.id || f) === userId
+    );
+  };
 
   const filteredUsers = users
     .filter(user => {

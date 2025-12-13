@@ -115,7 +115,17 @@ useEffect(() => {
     })
     .sort((a, b) => (b.followerCount || 0) - (a.followerCount || 0));
 
-  if (!currentUser) return <div className="text-center py-20 text-xl">Đang tải...</div>;
+  if (!currentUser) {
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center flex-col gap-6">
+      <Users className="w-24 h-24 text-gray-300" />
+      <p className="text-2xl font-medium">Bạn cần đăng nhập để tìm kiếm bạn bè</p>
+      <Button onClick={onBack} size="lg" variant="outline">
+        Quay lại trang chủ
+      </Button>
+    </div>
+  );
+}
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

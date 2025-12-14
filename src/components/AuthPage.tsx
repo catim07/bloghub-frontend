@@ -9,7 +9,7 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Mail, Lock, Eye, EyeOff, User, Chrome } from "lucide-react";
 import { motion } from "motion/react"; // Giữ nguyên import của bạn
 import axios from "axios";
-
+import { useGoogleLogin } from '@react-oauth/google';
 // Thêm biến môi trường – CHỈ ĐỔI Ở .env LÀ XONG!
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -86,24 +86,50 @@ export function AuthPage({ onClose, onSuccess }: AuthPageProps) {
       alert(err.response?.data?.message || "Đăng ký thất bại");
     }
   };
+const handleGoogleLogin = useGoogleLogin({
+  onSuccess: async (response) => {
+    console.log("Google response:", response);
 
-  const handleGoogleLogin = () => {
-    console.log("Google login");
-    
-    // Giả lập thông tin user và token như khi login thường
-    const mockUser = {
-      id: "google123",
-      name: "Google User",
-      email: "googleuser@gmail.com",
-      role: "user",
-    };
-    
-    const mockToken = "mock-google-token"; // token giả
-    
-    localStorage.setItem("token", mockToken);
-    onSuccess(mockUser, mockToken); // ✅ truyền đúng dữ liệu
-  };
+    const accessToken = response.access_token;
 
+    if (!accessToken) {
+      alert("Không nhận được access token từ Google");
+      return;
+    }
+
+    try {
+  const userInfoRes = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  const googleUser = userInfoRes.data;
+  console.log("Google user info:", googleUser);
+
+  // XÓA PHẦN CHECK email_verified Ở ĐÂY
+
+  const res = await axios.post(`${API_URL}/api/auth/google`, {
+    googleUser,
+  });
+
+  const { user, token } = res.data;
+  if (!token) {
+    alert("Không nhận được token từ server!");
+    return;
+  }
+
+  localStorage.setItem("token", token);
+  onSuccess(user, token);
+} catch (err: any) {
+  console.error("Google login error:", err.response?.data || err.message);
+  alert(err.response?.data?.message || "Đăng nhập Google thất bại");
+}
+  },
+  onError: (error) => {
+    console.error("Google login error:", error);
+    alert("Đăng nhập Google thất bại");
+  },
+  // Giữ nguyên không set flow → mặc định implicit → trả access_token
+});
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
       {/* Background decorations */}
@@ -305,7 +331,7 @@ export function AuthPage({ onClose, onSuccess }: AuthPageProps) {
                       type="button"
                       variant="outline"
                       className="w-full gap-2"
-                      onClick={handleGoogleLogin}
+                      onClick={() => handleGoogleLogin()}
                     >
                       <Chrome className="h-5 w-5" />
                       Đăng nhập bằng Google
@@ -446,7 +472,7 @@ export function AuthPage({ onClose, onSuccess }: AuthPageProps) {
                       type="button"
                       variant="outline"
                       className="w-full gap-2"
-                      onClick={handleGoogleLogin}
+                      onClick={() => handleGoogleLogin()}
                     >
                       <Chrome className="h-5 w-5" />
                       Đăng ký bằng Google

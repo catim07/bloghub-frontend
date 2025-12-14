@@ -51,7 +51,7 @@ export default function App() {
   const [currentArticle, setCurrentArticle] = useState<any>(null);
   const [featuredAuthors, setFeaturedAuthors] = useState<any[]>([]);
   const [topTags, setTopTags] = useState<any[]>([]);
-
+  const [searchQuery, setSearchQuery] = useState("");
   // Dark mode
   useEffect(() => {
     if (localStorage.getItem("darkMode") === "dark") {
@@ -227,6 +227,8 @@ export default function App() {
           }}
           isLoggedIn={isLoggedIn}
           currentUser={currentUser}
+          searchQuery={searchQuery}              // ← Thêm dòng này
+          onSearchChange={setSearchQuery}
         />
         <EditArticle
           darkMode={darkMode}
@@ -255,6 +257,8 @@ export default function App() {
           }}
           isLoggedIn={isLoggedIn}
           currentUser={currentUser}
+          searchQuery={searchQuery}              // ← Thêm dòng này
+  onSearchChange={setSearchQuery}
         />
         <AuthPage onClose={goToHome} onSuccess={handleLoginSuccess} />
       </div>
@@ -278,6 +282,8 @@ export default function App() {
           }}
           isLoggedIn={isLoggedIn}
           currentUser={currentUser}
+          searchQuery={searchQuery}              // ← Thêm dòng này
+  onSearchChange={setSearchQuery}
         />
         <NewArticle
           darkMode={darkMode}
@@ -306,6 +312,8 @@ export default function App() {
           }}
           isLoggedIn={isLoggedIn}
           currentUser={currentUser}
+          searchQuery={searchQuery}              // ← Thêm dòng này
+  onSearchChange={setSearchQuery}
         />
         <ArticleDetail
           darkMode={darkMode}
@@ -390,6 +398,9 @@ export default function App() {
         }}
         isLoggedIn={isLoggedIn}
         currentUser={currentUser}
+        searchQuery={searchQuery}              // ← Thêm dòng này
+  onSearchChange={setSearchQuery}
+  
       />
 
       <main className="container mx-auto px-4 py-8">
@@ -435,18 +446,24 @@ export default function App() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {articles
-                      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                      .map((article) => (
-                        <ArticleCard
-                          key={article._id}
-                          {...article}
-                          authorName={
-                            article.authorName ||
-                            (typeof article.author === "object" ? article.author.name : "Ẩn danh")
-                          }
-                          onClick={() => handleArticleClick(article._id)}
-                        />
-                      ))}
+  .filter(article => 
+    searchQuery === "" ||  // Nếu search rỗng → hiện hết
+    article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (article.content || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    article.tags?.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+  )
+  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  .map((article) => (
+    <ArticleCard
+      key={article._id}
+      {...article}
+      authorName={
+        article.authorName ||
+        (typeof article.author === "object" ? article.author.name : "Ẩn danh")
+      }
+      onClick={() => handleArticleClick(article._id)}
+    />
+  ))}
                   </div>
                 )}
               </TabsContent>
@@ -457,18 +474,24 @@ export default function App() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {articles
-                      .sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0))
-                      .map((article) => (
-                        <ArticleCard
-                          key={article._id}
-                          {...article}
-                          authorName={
-                            article.authorName ||
-                            (typeof article.author === "object" ? article.author.name : "Ẩn danh")
-                          }
-                          onClick={() => handleArticleClick(article._id)}
-                        />
-                      ))}
+  .filter(article => 
+    searchQuery === "" ||
+    article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (article.content || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    article.tags?.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+  )
+  .sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0))
+  .map((article) => (
+    <ArticleCard
+      key={article._id}
+      {...article}
+      authorName={
+        article.authorName ||
+        (typeof article.author === "object" ? article.author.name : "Ẩn danh")
+      }
+      onClick={() => handleArticleClick(article._id)}
+    />
+  ))}
                   </div>
                 )}
               </TabsContent>
@@ -493,54 +516,71 @@ export default function App() {
                   </div>
                 ) : (
                   <>
-                    {articles
-                      .filter((article) => {
-                        const following = Array.isArray(currentUser?.following) ? currentUser.following : [];
-                        let authorId: string | undefined;
-                        if (article.author) {
-                          if (typeof article.author === "object" && article.author !== null) {
-                            authorId = article.author._id || article.author.id;
-                          } else if (typeof article.author === "string") {
-                            authorId = article.author;
-                          }
-                        }
-                        if (!authorId && article.authorId) authorId = article.authorId;
-                        if (!authorId) return false;
-                        return following.some((id: any) => String(id._id || id.id || id) === authorId);
-                      })
-                      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                      .map((article) => (
-                        <ArticleCard
-                          key={article._id}
-                          {...article}
-                          authorName={
-                            article.authorName ||
-                            (typeof article.author === "object" && article.author ? article.author.name : "Ẩn danh")
-                          }
-                          onClick={() => handleArticleClick(article._id)}
-                        />
-                      ))}
+  {articles
+    .filter((article) => {
+      // Logic following cũ
+      const following = Array.isArray(currentUser?.following) ? currentUser.following : [];
+      let authorId: string | undefined;
+      if (article.author) {
+        if (typeof article.author === "object" && article.author !== null) {
+          authorId = article.author._id || article.author.id;
+        } else if (typeof article.author === "string") {
+          authorId = article.author;
+        }
+      }
+      if (!authorId && article.authorId) authorId = article.authorId;
+      if (!authorId) return false;
+      const isFromFollowing = following.some((id: any) => String(id._id || id.id || id) === authorId);
 
-                    {articles.filter((article) => {
-                      const following = Array.isArray(currentUser?.following) ? currentUser.following : [];
-                      let authorId: string | undefined;
-                      if (article.author) {
-                        if (typeof article.author === "object" && article.author !== null) {
-                          authorId = article.author._id || article.author.id;
-                        } else if (typeof article.author === "string") {
-                          authorId = article.author;
-                        }
-                      }
-                      if (!authorId && article.authorId) authorId = article.authorId;
-                      if (!authorId) return false;
-                      return following.some((id: any) => String(id._id || id.id || id) === authorId);
-                    }).length === 0 && (
-                      <div className="col-span-2 text-center py-20">
-                        <p className="text-2xl mb-4">Chưa có bài viết mới từ người bạn theo dõi</p>
-                        <p className="text-muted-foreground">Họ sẽ xuất hiện ngay khi đăng bài!</p>
-                      </div>
-                    )}
-                  </>
+      // THÊM FILTER SEARCH
+      const matchSearch = searchQuery === "" ||
+        article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (article.content || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        article.tags?.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      return isFromFollowing && matchSearch;
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .map((article) => (
+      <ArticleCard
+        key={article._id}
+        {...article}
+        authorName={
+          article.authorName ||
+          (typeof article.author === "object" && article.author ? article.author.name : "Ẩn danh")
+        }
+        onClick={() => handleArticleClick(article._id)}
+      />
+    ))}
+
+  {/* Check empty – cũng thêm filter search */}
+  {articles.filter((article) => {
+    const following = Array.isArray(currentUser?.following) ? currentUser.following : [];
+    let authorId: string | undefined;
+    if (article.author) {
+      if (typeof article.author === "object" && article.author !== null) {
+        authorId = article.author._id || article.author.id;
+      } else if (typeof article.author === "string") {
+        authorId = article.author;
+      }
+    }
+    if (!authorId && article.authorId) authorId = article.authorId;
+    if (!authorId) return false;
+    const isFromFollowing = following.some((id: any) => String(id._id || id.id || id) === authorId);
+
+    const matchSearch = searchQuery === "" ||
+      article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (article.content || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      article.tags?.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    return isFromFollowing && matchSearch;
+  }).length === 0 && (
+    <div className="col-span-2 text-center py-20">
+      <p className="text-2xl mb-4">Chưa có bài viết mới từ người bạn theo dõi</p>
+      <p className="text-muted-foreground">Họ sẽ xuất hiện ngay khi đăng bài!</p>
+    </div>
+  )}
+</>
                 )}
               </TabsContent>
             </Tabs>

@@ -91,9 +91,18 @@ export function NotificationBell() {
     setOpen(false);
   };
 
-  useEffect(() => {
-    if (open && token) fetchNotifications();
-  }, [open, token, fetchNotifications]);
+  // Fetch thông báo realtime (mỗi 30s) + fetch ngay khi mount để badge hiện số ngay
+useEffect(() => {
+  if (!token) return;
+
+  // Fetch ngay khi component mount (để badge hiện số ngay từ đầu)
+  fetchNotifications();
+
+  // Fetch định kỳ mỗi 30s để update badge khi có thông báo mới
+  const interval = setInterval(fetchNotifications, 30000);
+
+  return () => clearInterval(interval);
+}, [token, fetchNotifications]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 

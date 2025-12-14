@@ -16,6 +16,8 @@ interface NavigationProps {
     name?: string;
     avatar?: string;
   } | null;
+    searchQuery?: string;
+  onSearchChange?: (value: string) => void;
 }
 
 export function Navigation({
@@ -26,9 +28,13 @@ export function Navigation({
   onAuthClick,
   onLogout,
   isLoggedIn = false,
-  currentUser
+  currentUser,
+  searchQuery = "",            
+  onSearchChange
 }: NavigationProps) {
+  
   return (
+    
     <nav className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
@@ -43,10 +49,12 @@ export function Navigation({
           <div className="relative hidden flex-1 max-w-md md:block mx-8">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              type="search"
-              placeholder="Tìm kiếm bài viết..."
-              className="pl-10 bg-muted/50"
-            />
+  type="search"
+  placeholder="Tìm kiếm bài viết..."
+  className="pl-10 bg-muted/50"
+  value={searchQuery || ""}
+  onChange={(e) => onSearchChange?.(e.target.value)}
+/>
           </div>
 
           {/* Right Side - Buttons */}
